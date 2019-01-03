@@ -1,0 +1,127 @@
+#!/bin/bash
+#----------------------------------------------------
+Dependency: gnuplot
+License: MIT
+author: vlkon (2019)
+#----------------------------------------------------
+
+interval=1	# time interval between "watch" update
+
+command=''
+
+buff_size=30		# number of datapoints (+1) to plot
+
+xsize=79
+ysize=24
+
+ymin='*'			# maximal plot Y-scale
+ymax='*'			# maximal plot Y-scale
+aspect='2,1'		# default aspect ratio 2:1
+xspacing=0.05
+
+run=1
+cleanup_run=1
+temp_file="/dev/shm/watch_plot_$BASHPID.dat"
+
+#----------------------------------------------------
+
+# remove any temp-files when the script ends
+function cleanup {
+	if [ $cleanup_run -eq 1 ]; then
+		rm  -r $temp_file
+	fi
+}
+
+#----------------------------------------------------
+usage() { echo "Usage: $0 [-hn:c:b:x:y:m:M:k]
+	-h ..... this help
+	-n ..... update interval (s)
+	-c ..... command to run - has to return only number(s) - whitespace separated
+	-b ..... buffer size (how many datapoints to store)
+	-x ..... width of graph
+	-y ..... height of graph
+	-m ..... y-scale minimal value
+	-M ..... y-scale maximal value
+	-k ..... no cleanup of temp file with recorded data
+	
+	use Ctrl-C to exit
+	" 1>&2; exit 1; }
+
+while getopts "hn:c:b:x:y:m:M:k" arg; do
+	case "${arg}" in
+		h)
+			usage
+			;;
+		n)
+			interval=${OPTARG}
+			;;
+		c)
+			command=${OPTARG}
+			;;
+		b)
+			buff_size=${OPTARG}
+			;;
+		x)
+			xsize=${OPTARG}
+			;;
+		y)
+			ysize=${OPTARG}
+			;;
+		m)
+			ymin=${OPTARG}
+			;;
+		M)
+			ymax=${OPTARG}
+			;;
+		k)	
+			cleanup_run=0
+			;;
+	esac
+done
+
+#----------------------------------------------------
+
+if [ -z ${command} ]; then
+	echo "Err - no command specified" 1>&2
+	usage
+fi
+
+clear				# just clear everything on first run
+
+echo "Every ${interval}s:   $command"
+echo \"$command\" > $temp_file
+trap cleanup EXIT
+
+while true; do
+	# get the number(s)
+    eval " $command" >> $temp_file
+
+	# crop file to defined length
+	if [ $(wc -l < $temp_file) -gt $(($buff_size + 1)) ]; then
+		sed -i 2d $temp_file			# remove oldest entry == second line
+	fi
+
+	# cleanup of terminal
+	if [ $run -ne 1 ]; then
+		# cleanup procedure - remove previous graph
+		for (( jjj = 0; jjj < ($ysize+1); ++jjj )); do
+			echo -ne "\r\e[1A\e[2K"		# move to the start of the line, 1 up and clear whole line
+		done
+	else
+		run=0
+	fi
+
+	gnuplot -e "set terminal dumb ansirgb enhanced feed aspect $aspect size $xsize,$ysize; \
+				set colorsequence classic; \
+				set xrange [-($xspacing*$buff_size):($buff_size+$xspacing*$buff_size)];
+				set yrange [$ymin:$ymax]; \
+				set key outside; \
+				N=`awk 'NR==1 {print NF}' $temp_file`; \
+				plot for [i=1:N] \"$temp_file\" using :i \
+				title \" \" \
+				with lines" \
+		2> /dev/null
+	
+
+    sleep $interval
+done
