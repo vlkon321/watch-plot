@@ -1,8 +1,8 @@
 # watch-plot
 If you want a graph from your "watch" output.
 
-Some limitations
-  - Listed command can output only whitespace separated number(s) - and it has to be ended with newline character (because every n interval it is saved to a file)
+### Some limitations
+  - Listed command can output only whitespace separated number(s) - and it has to be ended with newline character (because every n interval it is saved to a file). It is not foolproof - if you feed it with a command that doesn't return numbers it will misbehave.
   - There are no labels which line is which. But they are at least ordered by columns (separate colours) sou you can make an educated guess
   - If you specify too large area of the graph (bigger than you terminal window) then the graphic will be messed up.
   - It is not a standalone application - it requires gnuplot (among others).
