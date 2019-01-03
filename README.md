@@ -1,5 +1,5 @@
 # watch-plot
-If you want a graph from your "watch" output.
+If you want a graph from your "watch" output. A simple bash script.
 
 ### Some limitations
   - Listed command can output only whitespace separated number(s) - and it has to be ended with newline character (because every n interval it is saved to a file). It is not foolproof - if you feed it with a command that doesn't return numbers it will misbehave.
